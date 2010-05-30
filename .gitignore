@@ -3,5 +3,5 @@ release/
 Makefile
 Makefile.Debug
 Makefile.Release
-FlashCardCreator.pro.user
-ui_dialog.h
+MIDIAnalyzer.pro.user
+ui_widget.h
