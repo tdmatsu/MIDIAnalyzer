@@ -22,7 +22,6 @@ private:
     Ui::Widget *ui;
 
     void showByteData(QByteArray buf);
-    MIDIData m_MidiData;
 
 private slots:
     void on_btnOpen_clicked();

@@ -3,24 +3,21 @@
 
 #include <QObject>
 
+class QIODevice;
+class QTreeWidgetItem;
+
 class MIDIData : public QObject
 {
     Q_OBJECT
 public:
-    MIDIData();
-
-    void setByteData(QByteArray data);
+    MIDIData(QObject* parent, QIODevice* data);
+    QList<QTreeWidgetItem *>& items(){return m_items;}
 
 private:
-    QByteArray m_byteData;
-    bool m_blnIsValid;
-    int m_SMFFormatType;
-    int m_intTrackCount;
-    int m_intDeltaTime;
+    QList<QTreeWidgetItem *> m_items;
+    void setByteData(QIODevice *data);
 
-    bool validate(int index, int data);
-
-    void init();
+    QTreeWidgetItem* createItem(QString key, QString value);
 };
 
 #endif // MIDIDATA_H

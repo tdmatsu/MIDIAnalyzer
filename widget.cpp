@@ -11,6 +11,15 @@ Widget::Widget(QWidget *parent) :
     ui(new Ui::Widget)
 {
     ui->setupUi(this);
+
+    // for debug only
+    QFile file(":/field.mid");
+    file.open(QIODevice::ReadOnly);
+    MIDIData *midiData = new MIDIData(this, &file);
+    ui->treeWidget->setColumnCount(2);
+    ui->treeWidget->insertTopLevelItems(0, midiData->items());
+    file.close();
+
 }
 
 Widget::~Widget()
@@ -50,14 +59,38 @@ void Widget::showByteData(QByteArray buf)
 
 void Widget::on_btnOpen_clicked()
 {
+    // for debug only
+    QFile file(":/field.mid");
+    file.open(QIODevice::ReadOnly);
+    QByteArray buf = file.readAll();
+    showByteData(buf);
+    file.close();
+
+#if 0
     QString fileName = QFileDialog::getOpenFileName(this, "Open MIDI file", "", "MIDI file (*.mid *.smf)");
 
     if (fileName.size()){
         QFile file(fileName);
         if (file.open(QIODevice::ReadOnly)){
-            QByteArray buf = file.readAll();
-            showByteData(buf);
-            m_MidiData.setByteData(buf);
+//            QByteArray buf = file.readAll();
+//            showByteData(buf);
+            MIDIData *midiData = new MIDIData(this, &file);
+
+            ui->treeWidget->insertTopLevelItems(0, midiData->items());
+
+            /*
+            ui->treeWidget->setColumnCount(1);
+            QList<QTreeWidgetItem *> items;
+            for (int i = 0; i < 10; ++i)
+            {
+                items.append(new QTreeWidgetItem((QTreeWidget*)0, QStringList(QString("item: %1").arg(i))));
+                items[i]->addChild(new QTreeWidgetItem(items[i],QStringList(QString("hello"))));
+            }
+
+            ui->treeWidget->insertTopLevelItems(0, items);
+            */
+
         }
     }
+#endif
 }

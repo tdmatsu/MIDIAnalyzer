@@ -1,68 +1,89 @@
 #include "mididata.h"
 
 #include <QDebug>
+#include <QTreeWidgetItem>
 
-MIDIData::MIDIData()
+#define READ2BYTES(buf,i) buf.at(i)*0x100+buf.at(i+1)
+//#define READ4BYTES(buf,i)
+
+inline int readBytes(QByteArray &buf, int index, int len)
 {
+    if (len > 4)
+        return 0; //max size is int
+
+    int ret = buf.at(index);
+    for (int i = 1; i < len; i++){
+        ret <<= 8;
+        ret += (uchar)buf.at(index+i);
+    }
+    return ret;
 }
 
-void MIDIData::setByteData(QByteArray data)
+MIDIData::MIDIData(QObject*parent, QIODevice *data)
+    : QObject(parent)
 {
-    init();
-    m_byteData = data;
-
-    // it should be at least bigger than 14 bytes
-    if(m_byteData.size() < 14){
-        qDebug() << "ERROR: file size is less than 14 bytes";
-        return;
-    }
-
-    if(!validate(0,0x4D) || !validate(1,0x54) || !validate(2,0x68) || !validate(3,0x64)) {
-        qDebug() << "ERROR: Header is not 'MThd'";
-        return;
-    }
-
-    if(!validate(4,0x00) || !validate(5,0x00) || !validate(6,0x00) || !validate(7,0x06)) {
-        qDebug() << "ERROR: Invalid header chunk size";
-        return;
-    }
-
-    if(!validate(8,0x00) || !(validate(9,0x00) || validate(9,0x01) || validate(9,0x02))) {
-        qDebug() << "ERROR: Invalid SMF format type";
-        return;
-    } else {
-        m_SMFFormatType = m_byteData[9];
-        qDebug() << "SMF format type = " << m_SMFFormatType;
-    }
-
-    // number of tracks
-    m_intTrackCount = m_byteData[10] * 0x100 + m_byteData[11];
-    qDebug() << m_intTrackCount << " tracks";
-
-    // delta time
-    m_intDeltaTime = m_byteData[12] * 0x100 + m_byteData[13];
-    qDebug() << "delta time = " << m_intDeltaTime;
-
-
-    qDebug() << "done!!";
-
-    m_blnIsValid = true;
+    setByteData(data);
 }
 
-void MIDIData::init()
+QTreeWidgetItem* MIDIData::createItem(QString key, QString value)
 {
-    m_blnIsValid = false;
-    m_SMFFormatType = 0;
-    m_intTrackCount = 0;
-    m_intDeltaTime = 0;
+    QStringList list;
+    list << key << value;
+    return new QTreeWidgetItem(list);
 }
 
-bool MIDIData::validate(int index ,int data)
+void MIDIData::setByteData(QIODevice *data)
 {
-    // index out of range
-    if (index > m_byteData.size() - 1){
-        qDebug() << "index out of range";
-    }
+    m_items.clear();
 
-    return (m_byteData.at(index) == data);
+    //read chunk header
+    QByteArray buf;
+
+    while(!data->atEnd())
+    {
+        buf.resize(8);
+        if (data->read(buf.data(),8) == -1){
+            qDebug() << "Failed to read data type!";
+            return;
+        }
+
+        QString strType = buf.left(4);
+        int intLen = readBytes(buf,4,4);
+
+        buf.clear();
+        buf.resize(intLen);
+        if (data->read(buf.data(), intLen) == -1){
+            qDebug() << "Failed to read data!";
+            qDebug() << "    strType = " + strType;
+            qDebug() << "    intLen = " + QString::number(intLen,10);
+            return;
+        }
+
+        if (strType != "MThd" && strType != "MTrk"){
+            qDebug() << "Invalid chunk header!!";
+            qDebug() << "    strType = " + strType;
+            return;
+        }
+
+        m_items.append(new QTreeWidgetItem(QStringList(strType)));
+        m_items.last()->addChild(createItem("Chunk size", QString::number(intLen, 10)));
+
+        if (strType == "MThd"){
+            if(intLen != 6){
+                qDebug() << "Invalid header chunk size!!";
+                qDebug() << "    intLen = " + QString::number(intLen,10) << " (expected 6)";
+                return;
+            }
+            int typ = readBytes(buf, 0, 2);
+            m_items.last()->addChild(createItem("SMF type", QString::number(typ,10)));
+
+            int trk = readBytes(buf, 2, 2);
+            m_items.last()->addChild(createItem("Number of tracks", QString::number(trk,10)));
+
+            int tim = readBytes(buf, 4, 2);
+            m_items.last()->addChild(createItem("Delta time", QString::number(tim,10)));
+        }else if(strType == "MTrk"){
+
+        }
+    }
 }

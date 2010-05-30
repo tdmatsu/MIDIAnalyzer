@@ -9,3 +9,4 @@ SOURCES += main.cpp \
 HEADERS += widget.h \
     mididata.h
 FORMS += widget.ui
+RESOURCES += resource.qrc
